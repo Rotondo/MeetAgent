@@ -1,0 +1,25 @@
+{
+  "name": "meeting-agent",
+  "version": "0.2.0",
+  "description": "Coach e assistente executivo resiliente para reuniões no Windows",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "overlay/main.js",
+  "scripts": {
+    "start": "node start.js",
+    "test": "node --test",
+    "test:quality": "node scripts/evaluate-interventions.js",
+    "test:renderer": "electron scripts/renderer-smoke.cjs",
+    "test:live-quality": "electron scripts/live-quality.cjs",
+    "test:loop": "node scripts/quality-loop.js"
+  },
+  "dependencies": {
+    "electron-audio-loopback": "^1.0.6",
+    "ws": "^8.21.1"
+  },
+  "devDependencies": {
+    "electron": "^43.1.1"
+  }
+}

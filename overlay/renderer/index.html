@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; img-src 'self' data:; worker-src 'self'" />
+  <link rel="stylesheet" href="style.css" />
+  <title>Meeting Agent</title>
+</head>
+<body>
+  <div id="resize-n"  class="resize-handle"></div>
+  <div id="resize-s"  class="resize-handle"></div>
+  <div id="resize-e"  class="resize-handle"></div>
+  <div id="resize-w"  class="resize-handle"></div>
+  <div id="resize-ne" class="resize-handle"></div>
+  <div id="resize-nw" class="resize-handle"></div>
+  <div id="resize-se" class="resize-handle"></div>
+  <div id="resize-sw" class="resize-handle"></div>
+
+  <div id="app">
+    <!-- BARRA TOPO (arrastável) -->
+    <header id="bar">
+      <span id="drag-area">⬛ Meeting Agent</span>
+      <span id="meeting-label"></span>
+      <div id="bar-actions">
+        <button id="btn-start-compact" title="Iniciar com o último projeto" hidden>▶</button>
+        <button id="btn-config"   title="Configurações">⚙</button>
+        <button id="btn-end"      title="Encerrar reunião e gerar relatório" hidden>■ Encerrar</button>
+        <button id="btn-collapse" title="Recolher para a barra">▲</button>
+        <button id="btn-minimize" title="Minimizar para a barra de tarefas">─</button>
+        <button id="btn-close"    title="Fechar o Meeting Agent">✕</button>
+      </div>
+    </header>
+
+    <div id="global-status" role="status" aria-live="polite">
+      <span id="status"></span>
+    </div>
+
+    <!-- VIEW: REUNIÃO EM ANDAMENTO -->
+    <main id="view-meeting">
+      <!-- Barra de iniciar (aparece só quando NÃO há reunião rodando) -->
+      <div id="start-bar">
+        <details id="secretary-home" open>
+          <summary>Hoje · preparação e acompanhamento</summary>
+          <label>Agenda<select id="secretary-agenda"><option value="">Reunião avulsa</option></select></label>
+          <button id="secretary-confirm-scope" type="button" hidden></button>
+          <div class="step-row"><button id="secretary-find-fireflies" type="button">Buscar reunião anterior no Fireflies</button><select id="secretary-fireflies" hidden></select><button id="secretary-link-fireflies" type="button" hidden>Usar como contexto</button></div>
+          <pre id="secretary-brief"></pre>
+          <details><summary>Preparar uma agenda</summary>
+            <label>Título<input id="secretary-title" maxlength="160" /></label>
+            <label>Iniciativa ou série<input id="secretary-scope" placeholder="Ex.: parceria provador — empresa" maxlength="160" /></label>
+            <label>Participantes<input id="secretary-people" maxlength="500" /></label>
+            <label>Data e hora<input id="secretary-date" type="datetime-local" /></label>
+            <label>Resultado desejado<textarea id="secretary-objective" maxlength="1000"></textarea></label>
+            <button id="secretary-save" type="button">Salvar preparação</button>
+          </details>
+          <label>Assistência<select id="secretary-mode"><option value="protect">Copiloto · proteger resultado</option><option value="silent">Secretária silenciosa</option><option value="coach">Coach · escuta e clareza</option></select></label>
+          <label><input id="secretary-pilot" type="checkbox" /> Exibir sugestões automáticas no piloto (até 3; coach até 5)</label>
+          <small>Desmarcado: avalia sugestões em silêncio. “Sugerir pergunta” permanece disponível.</small>
+          <details><summary>Reuniões e memória para revisar</summary><div id="secretary-records"></div></details>
+          <details><summary>Recuperar reunião anterior</summary><select id="secretary-legacy" aria-label="Relatório anterior"></select><button id="secretary-import">Associar à iniciativa da agenda selecionada</button></details>
+          <p id="secretary-notice" role="status"></p>
+        </details>
+        <div id="start-bar-head">
+          <span class="start-label">Preparar agenda</span>
+          <button id="btn-collapse-start" title="Recolher o bloco de iniciar">▲</button>
+        </div>
+        <div class="start-row">
+          <select id="start-context" title="Escolha o contexto duradouro da reunião"></select>
+          <button id="btn-new-context" title="Gerenciar contextos e direcionais">➕</button>
+        </div>
+        <div class="start-row">
+          <select id="start-direction" title="Escolha como esta agenda deve ser conduzida"></select>
+        </div>
+        <div class="start-row start-row-split">
+          <select id="start-audience" title="Com quem é a reunião">
+            <option value="interna">Interna</option><option value="cliente">Cliente</option><option value="parceiro">Parceiro</option><option value="prospect">Prospect</option><option value="1:1">1:1</option><option value="mista">Mista</option>
+          </select>
+          <select id="start-objective" title="Qual resultado a reunião deve produzir">
+            <option value="escuta/descoberta">Escuta / descoberta</option><option value="apresentação">Apresentação</option><option value="alinhamento">Alinhamento</option><option value="decisão">Decisão</option><option value="execução">Execução</option><option value="feedback">Feedback</option><option value="1:1">1:1</option>
+          </select>
+        </div>
+        <p id="agenda-preview" class="agenda-preview">Escolha contexto e direcional para preparar a agenda.</p>
+        <button id="btn-start" class="btn-primary" title="Iniciar reunião e ativar o agente">▶ Iniciar reunião</button>
+      </div>
+
+      <div class="actions"><button id="btn-start-now" class="btn-primary" title="Iniciar sem configurar, usando o último contexto">⚡ Agora</button></div>
+      <small class="shortcut-help">Atalhos globais: Ctrl+Alt+R agora · 1 decisão · 2 próximo passo · 3 dúvida · P pergunta.</small>
+      <div id="history"></div>
+
+      <div id="capture-health" hidden>
+        <span id="health-mic">○ Microfone</span>
+        <span id="health-system">○ Sistema</span>
+        <span id="health-deepgram">● Deepgram</span>
+        <span id="health-coach">○ Coach</span>
+        <span id="health-ai">○ IA</span>
+        <span id="meeting-timer">00:00:00</span>
+        <span id="audio-meter"><i></i></span>
+      </div>
+
+      <section id="meeting-priority" hidden aria-live="polite">
+        <span id="meeting-lens">APRESENTAÇÃO</span>
+        <strong id="meeting-progress">Agenda: 0/0</strong>
+        <label class="live-assistance" for="live-assistance">Dicas
+          <select id="live-assistance" title="Ajuste as dicas do agente nesta reunião">
+            <option value="silent">Pausadas</option>
+            <option value="protect">Essenciais</option>
+            <option value="coach">Mais dicas</option>
+          </select>
+        </label>
+        <button id="btn-toggle-checklist" title="Abrir checklist da agenda (A)">Agenda</button>
+      </section>
+      <section id="live-checklist" hidden aria-label="Checklist da agenda">
+        <div id="agenda-items"></div>
+        <div id="live-board" aria-label="Quadro vivo da reunião"></div>
+      </section>
+
+      <div id="proposal" hidden>
+        <div id="proposal-tag"></div>
+        <small id="proposal-act" hidden></small>
+        <p id="proposal-text"></p>
+        <p id="proposal-rationale" hidden></p>
+        <div id="proposal-timer-bar"><div id="proposal-timer-fill"></div></div>
+        <div class="actions">
+          <button id="btn-approve" title="Usar esta sugestão (Enter)">✔ Usar</button>
+          <button id="btn-reject"  title="Guardar para o fechamento (Esc)">↓ Guardar</button>
+        </div>
+        <div id="proposal-feedback" class="actions" hidden>
+          <button data-outcome="usada">Usei</button><button data-outcome="útil">Útil</button>
+          <button data-outcome="óbvia">Óbvia</button><button data-outcome="errada">Errada</button><button data-outcome="atrasada">Atrasada</button>
+        </div>
+      </div>
+
+      <div id="end-confirm" hidden>
+        <span>Encerrar a reunião e gerar o relatório?</span>
+        <div class="actions">
+          <button id="btn-end-yes">✔ Sim, encerrar</button>
+          <button id="btn-end-no">✗ Cancelar</button>
+        </div>
+      </div>
+
+      <form id="chat-form" title="Pergunte algo ao agente durante a reunião">
+        <label class="sr-only" for="chat-input">Pergunte ao agente</label>
+        <input id="chat-input" type="text" placeholder="💬 Pergunte ao agente… (ex: quem é essa empresa?)" autocomplete="off" />
+      </form>
+      <button id="btn-suggest-question" class="btn-question" title="Gera uma única pergunta pertinente a partir da discussão atual" hidden>💬 Sugerir pergunta</button>
+      <section id="question-card" aria-live="polite" hidden>
+        <span class="question-label">PERGUNTA SUGERIDA</span>
+        <small id="question-act" hidden></small>
+        <strong id="question-text"></strong>
+        <p id="question-rationale"></p>
+        <small id="question-provider"></small>
+      </section>
+    </main>
+
+    <!-- VIEW: CONFIGURAÇÃO -->
+    <main id="view-config" hidden>
+      <div id="config-steps">
+
+        <!-- PASSO 1: TRANSCRIÇÃO -->
+        <section class="step" id="step-deepgram">
+          <div class="step-header">
+            <span class="step-num">1</span>
+            <span class="step-title">Transcrição Deepgram</span>
+            <span class="step-status" id="deepgram-status">○ não configurado</span>
+          </div>
+          <p class="step-desc">O áudio da reunião é enviado à Deepgram. A chave é protegida pelo Windows e não fica no arquivo de projetos.</p>
+          <div class="step-row">
+            <label class="sr-only" for="cfg-deepgram-key">Chave da API Deepgram</label>
+            <input id="cfg-deepgram-key" type="password" placeholder="Deepgram API Key" autocomplete="off" />
+          </div>
+          <div class="step-row">
+            <button id="cfg-save-deepgram" title="Salvar a chave com criptografia do sistema">💾 Salvar chave</button>
+            <button id="cfg-clear-deepgram" title="Remover a chave salva">✕ Remover</button>
+          </div>
+        </section>
+
+        <section class="step">
+          <div class="step-header"><span class="step-num">1b</span><span class="step-title">IA pelo ChatGPT</span><span class="step-status" id="providers-status">○ verificando</span></div>
+          <p class="step-desc">Entre com sua conta ChatGPT. O Meeting Agent usa o Codex local com sessões efêmeras, sem chave de API e sem fallback pago.</p>
+          <div class="step-row"><button id="cfg-connect-codex">Entrar com ChatGPT</button><button id="cfg-disconnect-codex">Desconectar</button><button id="cfg-refresh-models">Atualizar modelos</button></div>
+          <p id="codex-account-detail" class="label-small">Conta ainda não verificada.</p>
+          <div class="step-row"><select id="cfg-partial-report" title="Relatório parcial para reprocessar"></select><button id="cfg-reprocess-report">Reprocessar análise</button></div>
+          <label class="pref-row"><span>Perfil de modelos</span><select id="cfg-ai-profile"><option value="economico">Econômico</option><option value="equilibrado">Equilibrado</option><option value="qualidade">Alta qualidade</option><option value="personalizado">Personalizado</option></select></label>
+          <div id="cfg-model-routing">
+            <label class="pref-row"><span>Observação</span><select data-model-purpose="observer"></select><select data-effort-purpose="observer"></select></label>
+            <label class="pref-row"><span>Copiloto</span><select data-model-purpose="strategist"></select><select data-effort-purpose="strategist"></select></label>
+            <label class="pref-row"><span>Crítica</span><select data-model-purpose="critic"></select><select data-effort-purpose="critic"></select></label>
+            <label class="pref-row"><span>Fechamento</span><select data-model-purpose="closing"></select><select data-effort-purpose="closing"></select></label>
+            <label class="pref-row"><span>Chat</span><select data-model-purpose="chat"></select><select data-effort-purpose="chat"></select></label>
+          </div>
+        </section>
+
+        <section class="step">
+          <div class="step-header"><span class="step-num">1c</span><span class="step-title">Agenda e memória conectada</span><span class="step-status" id="integrations-status">○ não conectado</span></div>
+          <p class="step-desc">Calendar prepara os próximos encontros; Drive, Fireflies e uma pasta local enriquecem o briefing da iniciativa.</p>
+          <div class="step-row"><input id="cfg-google-client-id" type="text" placeholder="Google OAuth Client ID" autocomplete="off" /><input id="cfg-google-client-secret" type="password" placeholder="Client secret (opcional)" autocomplete="off" /></div>
+          <div class="step-row"><button id="cfg-save-google">Salvar OAuth</button><button id="cfg-connect-google">Conectar Google</button><button id="cfg-sync-calendar">Sincronizar agenda</button><button id="cfg-disconnect-google">Desconectar</button></div>
+          <div class="step-row"><input id="cfg-fireflies-key" type="password" placeholder="Fireflies API Key" autocomplete="off" /><button id="cfg-save-fireflies">Salvar</button><button id="cfg-clear-fireflies">✕</button></div>
+          <div class="step-row"><button id="cfg-local-folder">📁 Pasta de documentos…</button><span id="cfg-local-folder-label" class="label-small">Nenhuma pasta</span></div>
+        </section>
+
+        <!-- PASSO 2: CONTEXTOS -->
+        <section class="step" id="step-context">
+          <div class="step-header">
+            <span class="step-num">2</span>
+            <span class="step-title">Contextos e direcionais</span>
+            <span class="step-status" id="context-status">○ nenhum contexto</span>
+          </div>
+          <p class="step-desc">Contexto é o conhecimento duradouro. Direcional é o roteiro de uma agenda específica. A criação é local: copie o prompt, use seu LLM externo e cole o pacote Markdown para revisar.</p>
+
+          <ul id="context-list"></ul>
+
+          <div class="step-row">
+            <select id="ctx-editor-select" title="Contexto a editar"></select>
+            <select id="dir-editor-select" title="Direcional a editar"></select>
+          </div>
+          <div class="step-row">
+            <input id="ctx-name" type="text" placeholder="Nome do contexto" />
+            <input id="dir-name" type="text" placeholder="Nome do direcional" />
+          </div>
+          <input id="ctx-description" type="text" placeholder="Descrição curta do contexto (opcional)" />
+          <div class="step-row">
+            <button id="ctx-pick-folder" title="Escolher pasta opcional com skills e materiais">📁 Pasta opcional…</button>
+            <span id="ctx-path" class="label-small">Sem pasta selecionada</span>
+          </div>
+          <label class="label-small" for="ctx-brief">Briefing original</label>
+          <textarea id="ctx-brief" rows="5" placeholder="Cole o contexto completo, materiais, objetivo, restrições e exemplos."></textarea>
+          <button id="btn-copy-context-prompt" title="Copia o prompt para usar em qualquer LLM externo">📋 Copiar prompt para LLM externo</button>
+          <label class="label-small" for="ctx-package">Pacote retornado pelo LLM externo (Markdown)</label>
+          <textarea id="ctx-package" rows="9" placeholder="Cole aqui o pacote Markdown gerado. Nenhuma IA será chamada pelo Meeting Agent."></textarea>
+          <div id="context-package-preview" class="package-preview" hidden></div>
+          <div class="step-row">
+            <button id="btn-validate-context-package">🔎 Validar pacote</button>
+            <button id="btn-save-context-draft" title="Salva contexto e direcional como rascunho">💾 Salvar rascunho</button>
+            <button id="btn-activate-directional" title="Ativa o direcional revisado">✔ Ativar direcional</button>
+            <button id="btn-clone-directional" title="Duplica o direcional atual como rascunho">⧉ Duplicar</button>
+          </div>
+        </section>
+
+        <!-- PASSO 3: PREFERÊNCIAS -->
+        <section class="step" id="step-prefs">
+          <div class="step-header">
+            <span class="step-num">3</span>
+            <span class="step-title">Preferências</span>
+          </div>
+          <label class="pref-row" title="Opacidade durante a reunião — o relatório final sempre fica em 100%">
+            <span>Opacidade</span>
+            <input id="cfg-opacity" type="range" min="40" max="100" step="5" />
+            <span id="cfg-opacity-val"></span>
+          </label>
+          <label class="pref-row" title="Gera insights, alertas e propostas de skills automaticamente. Aumenta o consumo de IA.">
+            <span>Insights automáticos</span>
+            <input id="cfg-auto-analysis" type="checkbox" />
+          </label>
+          <label class="pref-row" title="Adapta o tipo da reunião e o comportamento ao papel real do usuário.">
+            <span>Adaptação automática</span>
+            <input id="cfg-adaptive-meeting" type="checkbox" />
+          </label>
+          <label class="pref-row" title="Fontes enviadas para transcrição">
+            <span>Áudio</span>
+            <select id="cfg-audio-mode">
+              <option value="both">Sistema + microfone</option>
+              <option value="system">Somente sistema</option>
+              <option value="microphone">Somente microfone</option>
+            </select>
+          </label>
+          <label class="pref-row" title="Intervalo do coach para devolutivas durante a reunião">
+            <span>Coach</span>
+            <select id="cfg-coach-interval">
+              <option value="15000">Intenso — a cada 15s</option>
+              <option value="25000">Equilibrado — a cada 25s</option>
+              <option value="40000">Discreto — a cada 40s</option>
+            </select>
+          </label>
+          <button id="btn-open-logs" title="Abrir a pasta e selecionar o diagnóstico mais recente">📄 Localizar último log</button>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- VIEW: RELATÓRIO FINAL -->
+    <main id="view-closing" hidden>
+      <div class="step-header">
+        <span class="step-title">📋 Relatório da reunião</span>
+      </div>
+      <div id="closing-content" class="report-content"></div>
+      <div id="closing-actions" hidden>
+        <strong>Ações pendentes</strong>
+        <div id="closing-action-list"></div>
+        <button id="btn-execute-closing">▶ Executar selecionadas</button>
+      </div>
+      <div class="actions">
+        <button id="btn-copy-report" title="Copiar relatório para o clipboard">📋 Copiar</button>
+        <button id="btn-close-report" title="Fechar relatório e voltar">✔ Fechar</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="audio-capture.js"></script>
+  <script src="app.js"></script>
+  <script src="secretary-ui.js"></script>
+</body>
+</html>

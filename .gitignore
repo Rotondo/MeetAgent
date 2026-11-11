@@ -1,0 +1,16 @@
+node_modules/
+outputs/
+*.log
+.env
+*.key
+logs/
+projects.json
+build/quality/
+.remember/
+build/
+*.db
+*.sqlite
+*.sqlite-*
+.env.*
+!.env.example
+*.ico.bak
