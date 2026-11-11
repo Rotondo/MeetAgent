@@ -78,7 +78,7 @@ A preparação da agenda segue quatro escolhas obrigatórias: **Contexto → Dir
 - **Público**: interna, cliente, parceiro, prospect, 1:1 ou mista;
 - **Objetivo**: escuta/descoberta, apresentação, alinhamento, decisão, execução, feedback ou 1:1.
 
-Os antigos projetos são migrados automaticamente: `Liderança` vira o contexto com `Condução geral`; `Apresentação de Soluções` permanece como contexto e direcional. A biblioteca inicial também sugere Parcerias, Produto e Projetos e Cliente e Prospect.
+A biblioteca inicial sugere contextos como Parcerias, Produto, Projetos e Cliente e Prospect. Você pode criar os seus.
 
 Para criar conteúdo novo, use `Novo contexto` ou `Novo direcional` em `⚙ Configurações > Contextos`:
 
@@ -102,7 +102,7 @@ live_analysis: true
 ---
 ```
 
-O contexto `Apresentação de Soluções` já foi cadastrado e usa a pasta:
+Para usar o copiloto de apresentação, cadastre um contexto e aponte para a pasta do seu projeto:
 
 ```text
 C:\caminho\para\seu-projeto
